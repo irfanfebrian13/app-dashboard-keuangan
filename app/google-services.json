@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "77885371756",
+    "project_id": "app-hematku",
+    "storage_bucket": "app-hematku.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77885371756:android:25b4ded693908cddf52f49",
+        "android_client_info": {
+          "package_name": "com.cantara.hematku"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "77885371756-p3kv3nhjj5ej2tvpivuca2fac5ip5vun.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cantara.hematku",
+            "certificate_hash": "c1ef8650049874d2424bd5e62bda6719f31e3873"
+          }
+        },
+        {
+          "client_id": "77885371756-4fjirt77h7533e30idt4vg42vas63mc7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3eoRggoGQ4nrsPxjooImlladeQCTFvvU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "77885371756-4fjirt77h7533e30idt4vg42vas63mc7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
