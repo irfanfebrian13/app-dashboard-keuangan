@@ -27,6 +27,12 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Recreate debug.keystore
+        run: |
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+
       - name: Make Gradle Wrapper Executable
         run: |
           if [ -f ./gradlew ]; then
