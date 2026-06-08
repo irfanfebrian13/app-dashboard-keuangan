@@ -163,6 +163,7 @@ fun SavingsTab(
     // Modal dialog to Add a New Savings Target
     if (showAddDialog) {
         var goalTitle by remember { mutableStateOf("") }
+        var holderName by remember { mutableStateOf("") }
         var targetAmtStr by remember { mutableStateOf("") }
         var initialAmtStr by remember { mutableStateOf("0") }
         var goalNotes by remember { mutableStateOf("") }
@@ -196,8 +197,24 @@ fun SavingsTab(
                     )
 
                     OutlinedTextField(
+                        value = holderName,
+                        onValueChange = { holderName = it },
+                        label = { Text("Atas Nama Pemilik") },
+                        placeholder = { Text("Misal: Kak Irfani") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Atas Nama", modifier = Modifier.size(20.dp)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    OutlinedTextField(
                         value = targetAmtStr,
-                        onValueChange = { targetAmtStr = it },
+                        onValueChange = { input -> 
+                            val clean = input.replace(".", "").filter { it.isDigit() }
+                            targetAmtStr = if (clean.isEmpty()) "" else {
+                                val parsed = clean.toLongOrNull() ?: 0L
+                                java.text.NumberFormat.getIntegerInstance(java.util.Locale("id", "ID")).format(parsed)
+                            }
+                        },
                         label = { Text("Target Nominal (Rp)") },
                         placeholder = { Text("Masukan jumlah target") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -207,7 +224,13 @@ fun SavingsTab(
 
                     OutlinedTextField(
                         value = initialAmtStr,
-                        onValueChange = { initialAmtStr = it },
+                        onValueChange = { input ->
+                            val clean = input.replace(".", "").filter { it.isDigit() }
+                            initialAmtStr = if (clean.isEmpty()) "" else {
+                                val parsed = clean.toLongOrNull() ?: 0L
+                                java.text.NumberFormat.getIntegerInstance(java.util.Locale("id", "ID")).format(parsed)
+                            }
+                        },
                         label = { Text("Tabungan Awal (Rp)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -234,14 +257,16 @@ fun SavingsTab(
                         }
                         Button(
                             onClick = {
-                                val targetAmt = targetAmtStr.toDoubleOrNull() ?: 0.0
-                                val initialAmt = initialAmtStr.toDoubleOrNull() ?: 0.0
+                                val targetAmt = targetAmtStr.replace(".", "").toDoubleOrNull() ?: 0.0
+                                val initialAmt = initialAmtStr.replace(".", "").toDoubleOrNull() ?: 0.0
                                 if (goalTitle.isEmpty()) {
                                     Toast.makeText(context, "Mohon masukan nama goal!", Toast.LENGTH_SHORT).show()
+                                } else if (holderName.isEmpty()) {
+                                    Toast.makeText(context, "Mohon masukan nama pemilik (atas nama)!", Toast.LENGTH_SHORT).show()
                                 } else if (targetAmt <= 0) {
                                     Toast.makeText(context, "Mohon masukan target nominal yang valid!", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    viewModel.addSaving(goalTitle, targetAmt, initialAmt, goalNotes)
+                                    viewModel.addSaving(goalTitle, targetAmt, initialAmt, goalNotes, holderName)
                                     showAddDialog = false
                                     Toast.makeText(context, "Goal tabungan berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
                                 }
@@ -285,9 +310,15 @@ fun SavingsTab(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    OutlinedTextField(
+                     OutlinedTextField(
                         value = amountString,
-                        onValueChange = { amountString = it },
+                        onValueChange = { input ->
+                            val clean = input.replace(".", "").filter { it.isDigit() }
+                            amountString = if (clean.isEmpty()) "" else {
+                                val parsed = clean.toLongOrNull() ?: 0L
+                                java.text.NumberFormat.getIntegerInstance(java.util.Locale("id", "ID")).format(parsed)
+                            }
+                        },
                         label = { Text("Jumlah Uang (Rp)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -306,7 +337,7 @@ fun SavingsTab(
                         }
                         Button(
                             onClick = {
-                                val amount = amountString.toDoubleOrNull() ?: 0.0
+                                val amount = amountString.replace(".", "").toDoubleOrNull() ?: 0.0
                                 if (amount <= 0) {
                                     Toast.makeText(context, "Silakan isi jumlah yang valid", Toast.LENGTH_SHORT).show()
                                 } else {
@@ -398,6 +429,32 @@ fun SavingItem(
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onBackground
                     )
+                    if (saving.holderName.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Atas Nama",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "Atas Nama: ${saving.holderName}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                     if (saving.notes.isNotEmpty()) {
                         Text(
                             text = saving.notes,

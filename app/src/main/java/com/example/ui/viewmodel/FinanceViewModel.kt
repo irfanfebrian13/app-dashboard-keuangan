@@ -164,9 +164,9 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
             repository.allSavings.first().let { currentSavings ->
                 if (currentSavings.isEmpty()) {
                     val sampleSavings = listOf(
-                        Saving(title = "Beli Laptop ROG", targetAmount = 15000000.0, currentAmount = 5500000.0, notes = "Laptop development"),
-                        Saving(title = "Dana Liburan Bali", targetAmount = 5000000.0, currentAmount = 3500000.0, notes = "Tiket & akomodasi"),
-                        Saving(title = "Dana Darurat 6 Bulan", targetAmount = 12000000.0, currentAmount = 8000000.0, notes = "Simpanan darurat")
+                        Saving(title = "Beli Laptop ROG", targetAmount = 15000000.0, currentAmount = 5500000.0, notes = "Laptop development", holderName = "Irfani"),
+                        Saving(title = "Dana Liburan Bali", targetAmount = 5000000.0, currentAmount = 3500000.0, notes = "Tiket & akomodasi", holderName = "Irfani"),
+                        Saving(title = "Dana Darurat 6 Bulan", targetAmount = 12000000.0, currentAmount = 8000000.0, notes = "Simpanan darurat", holderName = "Irfani")
                     )
                     for (saving in sampleSavings) {
                         repository.insertSaving(saving)
@@ -204,14 +204,15 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
     }
 
     // Savings Goals operations
-    fun addSaving(title: String, targetAmount: Double, currentAmount: Double, notes: String) {
+    fun addSaving(title: String, targetAmount: Double, currentAmount: Double, notes: String, holderName: String) {
         viewModelScope.launch {
             repository.insertSaving(
                 Saving(
                     title = title,
                     targetAmount = targetAmount,
                     currentAmount = currentAmount,
-                    notes = notes
+                    notes = notes,
+                    holderName = holderName
                 )
             )
         }
@@ -380,7 +381,7 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                     mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes) 
                 }
                 val savingsPayload = savingsList.map {
-                    mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date)
+                    mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date, "holderName" to it.holderName)
                 }
                 val categoriesPayload = categoriesList.map {
                     mapOf("name" to it.name, "type" to it.type, "icon" to it.icon)
@@ -587,7 +588,8 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                             val currentAmount = (svMap["currentAmount"] as? Number)?.toDouble() ?: 0.0
                             val notes = svMap["notes"] as? String ?: ""
                             val date = (svMap["date"] as? Number)?.toLong() ?: System.currentTimeMillis()
-                            repository.insertSaving(Saving(title = title, targetAmount = targetAmount, currentAmount = currentAmount, notes = notes, date = date))
+                            val holderName = svMap["holderName"] as? String ?: ""
+                            repository.insertSaving(Saving(title = title, targetAmount = targetAmount, currentAmount = currentAmount, notes = notes, date = date, holderName = holderName))
                         }
                     }
                 }
@@ -620,7 +622,7 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                     mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes) 
                 }
                 val savingsPayload = savingsList.map {
-                    mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date)
+                    mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date, "holderName" to it.holderName)
                 }
                 val categoriesPayload = categoriesList.map {
                     mapOf("name" to it.name, "type" to it.type, "icon" to it.icon)

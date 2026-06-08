@@ -10,5 +10,6 @@ data class Saving(
     val targetAmount: Double,
     val currentAmount: Double,
     val notes: String = "",
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+    val holderName: String = ""
 )

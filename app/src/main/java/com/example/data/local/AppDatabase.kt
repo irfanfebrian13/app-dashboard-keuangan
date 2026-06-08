@@ -8,7 +8,7 @@ import com.example.data.model.Transaction
 import com.example.data.model.Category
 import com.example.data.model.Saving
 
-@Database(entities = [Transaction::class, Category::class, Saving::class], version = 2, exportSchema = false)
+@Database(entities = [Transaction::class, Category::class, Saving::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract val transactionDao: TransactionDao
     abstract val savingDao: SavingDao
