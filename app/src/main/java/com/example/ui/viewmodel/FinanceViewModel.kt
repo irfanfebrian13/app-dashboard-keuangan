@@ -195,7 +195,7 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
         }
     }
 
-    fun addTransaction(title: String, amount: Double, type: String, category: String, date: Long, notes: String) {
+    fun addTransaction(title: String, amount: Double, type: String, category: String, date: Long, notes: String, holderName: String = "") {
         viewModelScope.launch {
             repository.insert(
                 Transaction(
@@ -204,7 +204,8 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                     type = type,
                     category = category,
                     date = date,
-                    notes = notes
+                    notes = notes,
+                    holderName = holderName
                 )
             )
         }
@@ -397,7 +398,7 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
 
                 // Compile into serializable Map payload
                 val txsPayload = txsList.map { 
-                    mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes) 
+                    mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes, "holderName" to it.holderName) 
                 }
                 val savingsPayload = savingsList.map {
                     mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date, "holderName" to it.holderName)
@@ -594,7 +595,8 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                             val category = txMap["category"] as? String ?: "Lain-lain"
                             val date = (txMap["date"] as? Number)?.toLong() ?: System.currentTimeMillis()
                             val notes = txMap["notes"] as? String ?: ""
-                            repository.insert(Transaction(title = title, amount = amount, type = type, category = category, date = date, notes = notes))
+                            val holderName = txMap["holderName"] as? String ?: ""
+                            repository.insert(Transaction(title = title, amount = amount, type = type, category = category, date = date, notes = notes, holderName = holderName))
                         }
                     }
 
@@ -638,7 +640,7 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
                 val categoriesList = repository.allCategories.first()
 
                 val txsPayload = txsList.map { 
-                    mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes) 
+                    mapOf("title" to it.title, "amount" to it.amount, "type" to it.type, "category" to it.category, "date" to it.date, "notes" to it.notes, "holderName" to it.holderName) 
                 }
                 val savingsPayload = savingsList.map {
                     mapOf("title" to it.title, "targetAmount" to it.targetAmount, "currentAmount" to it.currentAmount, "notes" to it.notes, "date" to it.date, "holderName" to it.holderName)
@@ -767,13 +769,14 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
 
         try {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val csvHeader = "ID,Tanggal,Nama Transaksi,Tipe,Kategori,Jumlah (Rp),Catatan\n"
+            val csvHeader = "ID,Tanggal,Nama Transaksi,Tipe,Kategori,Jumlah (Rp),Catatan,Nama Penabung\n"
             val csvBody = list.joinToString("\n") { tx ->
                 val dateStr = sdf.format(Date(tx.date))
                 val titleEscaped = tx.title.replace("\"", "\"\"")
                 val notesEscaped = tx.notes.replace("\"", "\"\"")
                 val categoryEscaped = tx.category.replace("\"", "\"\"")
-                "${tx.id},\"$dateStr\",\"$titleEscaped\",\"${tx.type}\",\"$categoryEscaped\",${tx.amount.toLong()},\"$notesEscaped\""
+                val holderEscaped = tx.holderName.replace("\"", "\"\"")
+                "${tx.id},\"$dateStr\",\"$titleEscaped\",\"${tx.type}\",\"$categoryEscaped\",${tx.amount.toLong()},\"$notesEscaped\",\"$holderEscaped\""
             }
             val csvText = csvHeader + csvBody
 

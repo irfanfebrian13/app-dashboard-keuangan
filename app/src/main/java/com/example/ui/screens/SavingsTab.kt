@@ -353,7 +353,8 @@ fun SavingsTab(
                                                 type = "PENGELUARAN",
                                                 category = "Tabungan",
                                                 date = System.currentTimeMillis(),
-                                                notes = "Disetor oleh ${depositorName.trim()} ke pos goal tabungan '${saving.title}'"
+                                                notes = "Disetor oleh ${depositorName.trim()} ke pos goal tabungan '${saving.title}'",
+                                                holderName = depositorName.trim()
                                             )
                                             Toast.makeText(context, "Tabungan didepositkan oleh ${depositorName.trim()}!", Toast.LENGTH_SHORT).show()
                                             selectedSavingForTx = null

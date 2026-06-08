@@ -11,5 +11,6 @@ data class Transaction(
     val type: String, // "PEMASUKAN" or "PENGELUARAN"
     val category: String,
     val date: Long = System.currentTimeMillis(),
-    val notes: String = ""
+    val notes: String = "",
+    val holderName: String = ""
 )
