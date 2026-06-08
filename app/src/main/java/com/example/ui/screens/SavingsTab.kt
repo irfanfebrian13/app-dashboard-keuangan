@@ -163,7 +163,6 @@ fun SavingsTab(
     // Modal dialog to Add a New Savings Target
     if (showAddDialog) {
         var goalTitle by remember { mutableStateOf("") }
-        var holderName by remember { mutableStateOf("") }
         var targetAmtStr by remember { mutableStateOf("") }
         var initialAmtStr by remember { mutableStateOf("0") }
         var goalNotes by remember { mutableStateOf("") }
@@ -192,16 +191,6 @@ fun SavingsTab(
                         onValueChange = { goalTitle = it },
                         label = { Text("Nama Target Tabungan") },
                         placeholder = { Text("Misal: Liburan ke Bali") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = holderName,
-                        onValueChange = { holderName = it },
-                        label = { Text("Atas Nama Pemilik") },
-                        placeholder = { Text("Misal: Kak Irfani") },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Atas Nama", modifier = Modifier.size(20.dp)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
                     )
@@ -261,12 +250,10 @@ fun SavingsTab(
                                 val initialAmt = initialAmtStr.replace(".", "").toDoubleOrNull() ?: 0.0
                                 if (goalTitle.isEmpty()) {
                                     Toast.makeText(context, "Mohon masukan nama goal!", Toast.LENGTH_SHORT).show()
-                                } else if (holderName.isEmpty()) {
-                                    Toast.makeText(context, "Mohon masukan nama pemilik (atas nama)!", Toast.LENGTH_SHORT).show()
                                 } else if (targetAmt <= 0) {
                                     Toast.makeText(context, "Mohon masukan target nominal yang valid!", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    viewModel.addSaving(goalTitle, targetAmt, initialAmt, goalNotes, holderName)
+                                    viewModel.addSaving(goalTitle, targetAmt, initialAmt, goalNotes, "")
                                     showAddDialog = false
                                     Toast.makeText(context, "Goal tabungan berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
                                 }
@@ -285,7 +272,8 @@ fun SavingsTab(
     // Modal dialogue handles Add/Withdraw Money Action
     selectedSavingForTx?.let { saving ->
         var amountString by remember { mutableStateOf("") }
-
+        var depositorName by remember { mutableStateOf(saving.holderName) }
+ 
         Dialog(onDismissRequest = { selectedSavingForTx = null }) {
             Card(
                 shape = RoundedCornerShape(24.dp),
@@ -309,7 +297,7 @@ fun SavingsTab(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
+ 
                      OutlinedTextField(
                         value = amountString,
                         onValueChange = { input ->
@@ -325,6 +313,18 @@ fun SavingsTab(
                         shape = RoundedCornerShape(14.dp)
                     )
 
+                    if (txType == "TOPUP") {
+                        OutlinedTextField(
+                            value = depositorName,
+                            onValueChange = { depositorName = it },
+                            label = { Text("Nama Penabung (Atas Nama)") },
+                            placeholder = { Text("Misal: Kak Irfani") },
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Nama Penabung", modifier = Modifier.size(20.dp)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                    }
+ 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -342,17 +342,22 @@ fun SavingsTab(
                                     Toast.makeText(context, "Silakan isi jumlah yang valid", Toast.LENGTH_SHORT).show()
                                 } else {
                                     if (txType == "TOPUP") {
-                                        viewModel.topUpSaving(saving, amount)
-                                        // Auto log saving as expense for balance adjustment!
-                                        viewModel.addTransaction(
-                                            title = "Setoran Tabungan: ${saving.title}",
-                                            amount = amount,
-                                            type = "PENGELUARAN",
-                                            category = "Tabungan",
-                                            date = System.currentTimeMillis(),
-                                            notes = "Dimasukan ke pos goal tabungan '${saving.title}'"
-                                        )
-                                        Toast.makeText(context, "Tabungan didepositkan!", Toast.LENGTH_SHORT).show()
+                                        if (depositorName.trim().isEmpty()) {
+                                            Toast.makeText(context, "Mohon isi nama penabung!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            viewModel.topUpSaving(saving, amount)
+                                            // Auto log saving as expense for balance adjustment!
+                                            viewModel.addTransaction(
+                                                title = "Setoran Tabungan: ${saving.title}",
+                                                amount = amount,
+                                                type = "PENGELUARAN",
+                                                category = "Tabungan",
+                                                date = System.currentTimeMillis(),
+                                                notes = "Disetor oleh ${depositorName.trim()} ke pos goal tabungan '${saving.title}'"
+                                            )
+                                            Toast.makeText(context, "Tabungan didepositkan oleh ${depositorName.trim()}!", Toast.LENGTH_SHORT).show()
+                                            selectedSavingForTx = null
+                                        }
                                     } else {
                                         if (amount > saving.currentAmount) {
                                             Toast.makeText(context, "Error: Saldo tabungan untuk target ini tidak mencukupi!", Toast.LENGTH_SHORT).show()
@@ -368,9 +373,9 @@ fun SavingsTab(
                                                 notes = "Ditarik dari pos goal tabungan '${saving.title}'"
                                             )
                                             Toast.makeText(context, "Tabungan ditarik kembali!", Toast.LENGTH_SHORT).show()
+                                            selectedSavingForTx = null
                                         }
                                     }
-                                    selectedSavingForTx = null
                                 }
                             },
                             modifier = Modifier.weight(1.5f),

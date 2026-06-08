@@ -42,6 +42,25 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
     val lastSyncTime = mutableStateOf<String?>(null)
     val cloudDataPreview = mutableStateOf<String?>(null)
 
+    // Update Checker States
+    val latestUpdateInfo = mutableStateOf<com.example.data.UpdateInfo?>(null)
+    val isCheckingUpdate = mutableStateOf(false)
+
+    fun checkAppUpdate(context: android.content.Context, onFinished: (com.example.data.UpdateInfo) -> Unit = {}) {
+        isCheckingUpdate.value = true
+        viewModelScope.launch {
+            try {
+                val info = com.example.data.UpdateManager.checkUpdate(context)
+                latestUpdateInfo.value = info
+                onFinished(info)
+            } catch (e: Exception) {
+                // Ignore
+            } finally {
+                isCheckingUpdate.value = false
+            }
+        }
+    }
+
     val allTransactions: StateFlow<List<Transaction>> = repository.allTransactions
         .stateIn(
             scope = viewModelScope,

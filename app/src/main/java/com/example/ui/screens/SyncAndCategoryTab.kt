@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.Category
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.FirebaseManager
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun SyncAndCategoryTab(
@@ -37,7 +38,7 @@ fun SyncAndCategoryTab(
     categories: List<Category>
 ) {
     val context = LocalContext.current
-    var activeSubTab by remember { mutableIntStateOf(0) } // 0: Kategori, 1: Sinkronisasi Awan
+    var activeSubTab by remember { mutableIntStateOf(0) } // 0: Kategori, 1: Sinkronisasi Awan, 2: Info Update
 
     Column(
         modifier = Modifier
@@ -62,16 +63,16 @@ fun SyncAndCategoryTab(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Kelola Kategori",
+                    text = "Kategori",
                     fontWeight = FontWeight.Bold,
                     color = if (activeSubTab == 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
+                    fontSize = 12.sp
                 )
             }
 
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1.2f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (activeSubTab == 1) MaterialTheme.colorScheme.primary else Color.Transparent)
                     .clickable { activeSubTab = 1 }
@@ -79,19 +80,36 @@ fun SyncAndCategoryTab(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Sinkronisasi Cloud",
+                    text = "Cloud Sync",
                     fontWeight = FontWeight.Bold,
                     color = if (activeSubTab == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
+                    fontSize = 12.sp
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (activeSubTab == 2) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .clickable { activeSubTab = 2 }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Cek Update",
+                    fontWeight = FontWeight.Bold,
+                    color = if (activeSubTab == 2) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
                 )
             }
         }
 
         // Sub Tab Contents
-        if (activeSubTab == 0) {
-            CategoryManagerView(viewModel = viewModel, categories = categories)
-        } else {
-            CloudSyncView(viewModel = viewModel)
+        when (activeSubTab) {
+            0 -> CategoryManagerView(viewModel = viewModel, categories = categories)
+            1 -> CloudSyncView(viewModel = viewModel)
+            2 -> AppUpdateSettingsView(viewModel = viewModel)
         }
     }
 }
@@ -904,6 +922,256 @@ fun CloudSyncView(
                             fontSize = 9.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppUpdateSettingsView(viewModel: FinanceViewModel) {
+    val context = LocalContext.current
+    var ownerInput by remember { mutableStateOf(com.example.data.UpdateManager.getSavedRepoOwner(context)) }
+    var repoInput by remember { mutableStateOf(com.example.data.UpdateManager.getSavedRepoName(context)) }
+    var showResults by remember { mutableStateOf(false) }
+
+    val updateInfo = viewModel.latestUpdateInfo.value
+    val isChecking = viewModel.isCheckingUpdate.value
+
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        // Section 1: Konfigurasi Repositori GitHub
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), RoundedCornerShape(20.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Pengaturan Pembaruan GitHub",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Aplikasi akan memindai versi rilis APK terbaru dari publik repositori GitHub Anda secara otomatis saat dibuka.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = ownerInput,
+                        onValueChange = { ownerInput = it },
+                        label = { Text("GitHub Owner (Username / Org)") },
+                        placeholder = { Text("Contoh: irfani-oppo") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Owner") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = repoInput,
+                        onValueChange = { repoInput = it },
+                        label = { Text("GitHub Repository Name") },
+                        placeholder = { Text("Contoh: app-dashboard-keuangan") },
+                        leadingIcon = { Icon(Icons.Default.Folder, contentDescription = "Repo") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Button(
+                        onClick = {
+                            if (ownerInput.trim().isEmpty() || repoInput.trim().isEmpty()) {
+                                Toast.makeText(context, "Username dan nama repositori wajib diisi!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                com.example.data.UpdateManager.saveRepoDetails(context, ownerInput, repoInput)
+                                showResults = true
+                                viewModel.checkAppUpdate(context) { info ->
+                                    if (info.hasUpdate) {
+                                        Toast.makeText(context, "Pembaruan rilis ditemukan!", Toast.LENGTH_SHORT).show()
+                                    } else if (!info.downloadUrl.contains("http")) {
+                                        Toast.makeText(context, "Tidak dapat terhubung atau rilis belum ada", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        Toast.makeText(context, "Aplikasi Anda sudah versi terbaru!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (isChecking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Memeriksa...", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "Check")
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Simpan & Cek Pembaruan", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section 2: Info Versi & Rilis Terbaru
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), RoundedCornerShape(20.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Informasi Versi Aplikasi",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Versi Terpasang:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(com.example.data.UpdateManager.getCurrentVersionName(context), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Version",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    if (updateInfo != null && showResults) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Versi Rilis GitHub:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Surface(
+                                color = if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else Color(0xFF10B981).copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(50),
+                            ) {
+                                Text(
+                                    text = updateInfo.latestVersion,
+                                    color = if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error else Color(0xFF10B981),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        // Status Badge Card
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error.copy(alpha = 0.08f) else Color(0xFF10B981).copy(alpha = 0.08f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else Color(0xFF10B981).copy(alpha = 0.2f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (updateInfo.hasUpdate) Icons.Default.NewReleases else Icons.Default.CheckCircle,
+                                    contentDescription = "Status",
+                                    tint = if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error else Color(0xFF10B981)
+                                )
+                                Column {
+                                    Text(
+                                        text = if (updateInfo.hasUpdate) "Pembaruan Versi Baru Tersedia! 🚀" else "Aplikasi Sudah Versi Terkini ✨",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = if (updateInfo.hasUpdate) MaterialTheme.colorScheme.error else Color(0xFF10B981)
+                                    )
+                                    Text(
+                                        text = if (updateInfo.hasUpdate) "Silakan perbarui untuk mendapatkan perbaikan rilis terbaru." else "Tidak memerlukan tindakan tambahan.",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        // Changelog
+                        Text("Catatan Rilis (Changelog):", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 160.dp, min = 40.dp),
+                            color = MaterialTheme.colorScheme.background,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = updateInfo.releaseNotes,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (updateInfo.hasUpdate && updateInfo.downloadUrl.isNotEmpty()) {
+                            Button(
+                                onClick = {
+                                    com.example.data.UpdateManager.openDownloadLink(context, updateInfo.downloadUrl)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = "Download")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Unduh Pembaruan APK", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else if (showResults && !isChecking) {
+                        Text(
+                            text = "Gagal memuat rilis atau info kosong. Pastikan repository publik dan rilis tag aktif sudah diupload.",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

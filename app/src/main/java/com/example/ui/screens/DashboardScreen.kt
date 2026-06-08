@@ -86,6 +86,17 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
     val savings by viewModel.allSavings.collectAsStateWithLifecycle()
     val categories by viewModel.allCategories.collectAsStateWithLifecycle()
 
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val updateInfo = viewModel.latestUpdateInfo.value
+
+    LaunchedEffect(Unit) {
+        viewModel.checkAppUpdate(context) { info ->
+            if (info.hasUpdate) {
+                showUpdateDialog = true
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -234,6 +245,92 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                         selectedTransactionByEdit = null
                         Toast.makeText(context, "Transaksi berhasil dihapus!", Toast.LENGTH_SHORT).show()
                     }
+                )
+            }
+
+            // In-App Update Dialog (M3 styled)
+            if (showUpdateDialog && updateInfo != null) {
+                AlertDialog(
+                    onDismissRequest = { showUpdateDialog = false },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = "Pembaruan",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    },
+                    title = {
+                        Text(
+                            text = "Pembaruan Tersedia! 🎉",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Versi Sekarang:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(updateInfo.currentVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Versi Terbaru:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(updateInfo.latestVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
+                            
+                            Text("Catatan Rilis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 120.dp, min = 40.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = updateInfo.releaseNotes,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(8.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                com.example.data.UpdateManager.openDownloadLink(context, updateInfo.downloadUrl)
+                                showUpdateDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Unduh & Instal Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showUpdateDialog = false }
+                        ) {
+                            Text("Nanti Saja", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    shape = RoundedCornerShape(24.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp
                 )
             }
         }
