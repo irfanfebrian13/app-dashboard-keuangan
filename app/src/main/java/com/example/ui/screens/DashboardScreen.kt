@@ -337,16 +337,14 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .heightIn(max = 120.dp, min = 40.dp)
+                                        .heightIn(max = 200.dp, min = 40.dp)
                                         .verticalScroll(rememberScrollState()),
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text(
+                                    MarkdownText(
                                         text = updateInfo.releaseNotes,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(8.dp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        modifier = Modifier.padding(8.dp)
                                     )
                                 }
                             }
