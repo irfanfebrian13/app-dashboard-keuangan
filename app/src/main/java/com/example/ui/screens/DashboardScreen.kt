@@ -88,11 +88,26 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
 
     var showUpdateDialog by remember { mutableStateOf(false) }
     val updateInfo = viewModel.latestUpdateInfo.value
+    val hasPendingUpdate = updateInfo?.hasUpdate == true
 
     LaunchedEffect(Unit) {
         viewModel.checkAppUpdate(context) { info ->
             if (info.hasUpdate) {
                 showUpdateDialog = true
+            }
+        }
+    }
+
+    fun openUpdateDialog() {
+        if (updateInfo != null) {
+            showUpdateDialog = true
+        } else {
+            viewModel.checkAppUpdate(context) { info ->
+                if (info.hasUpdate) {
+                    showUpdateDialog = true
+                } else {
+                    Toast.makeText(context, "Tidak ada pembaruan tersedia", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -137,20 +152,30 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { Toast.makeText(context, "Tidak ada notifikasi baru", Toast.LENGTH_SHORT).show() },
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifikasi",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    Box(modifier = Modifier.padding(end = 12.dp)) {
+                        IconButton(
+                            onClick = { openUpdateDialog() },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notifikasi",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        if (hasPendingUpdate) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
