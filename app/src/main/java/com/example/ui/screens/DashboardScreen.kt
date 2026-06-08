@@ -89,6 +89,8 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
     var showUpdateDialog by remember { mutableStateOf(false) }
     val updateInfo = viewModel.latestUpdateInfo.value
     val hasPendingUpdate = updateInfo?.hasUpdate == true
+    var downloadProgress by remember { mutableStateOf(-1) }
+    var isDownloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.checkAppUpdate(context) { info ->
@@ -276,7 +278,9 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
             // In-App Update Dialog (M3 styled)
             if (showUpdateDialog && updateInfo != null) {
                 AlertDialog(
-                    onDismissRequest = { showUpdateDialog = false },
+                    onDismissRequest = {
+                        if (!isDownloading) showUpdateDialog = false
+                    },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.SystemUpdate,
@@ -287,7 +291,7 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                     },
                     title = {
                         Text(
-                            text = "Pembaruan Tersedia! 🎉",
+                            text = if (isDownloading) "Mengunduh..." else "Pembaruan Tersedia! 🎉",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             textAlign = TextAlign.Center,
@@ -299,58 +303,89 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Versi Sekarang:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(updateInfo.currentVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Versi Terbaru:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(updateInfo.latestVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            }
-                            
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
-                            
-                            Text("Catatan Rilis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 120.dp, min = 40.dp)
-                                    .verticalScroll(rememberScrollState()),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = updateInfo.releaseNotes,
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.padding(8.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            if (isDownloading) {
+                                LinearProgressIndicator(
+                                    progress = { if (downloadProgress > 0) downloadProgress / 100f else 0f },
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                                 )
+                                Text(
+                                    text = if (downloadProgress > 0) "$downloadProgress%" else "Memulai unduhan...",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Versi Sekarang:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(updateInfo.currentVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Versi Terbaru:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(updateInfo.latestVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
+
+                                Text("Catatan Rilis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 120.dp, min = 40.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = updateInfo.releaseNotes,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(8.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     },
                     confirmButton = {
-                        Button(
-                            onClick = {
-                                com.example.data.UpdateManager.openDownloadLink(context, updateInfo.downloadUrl)
-                                showUpdateDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Unduh & Instal Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        if (!isDownloading) {
+                            Button(
+                                onClick = {
+                                    isDownloading = true
+                                    com.example.data.UpdateManager.downloadAndInstallApk(
+                                        context = context,
+                                        downloadUrl = updateInfo.downloadUrl,
+                                        onProgress = { progress -> downloadProgress = progress },
+                                        onError = { err ->
+                                            isDownloading = false
+                                            downloadProgress = -1
+                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                        },
+                                        onSuccess = {
+                                            isDownloading = false
+                                            showUpdateDialog = false
+                                        }
+                                    )
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Unduh & Instal Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     },
                     dismissButton = {
-                        TextButton(
-                            onClick = { showUpdateDialog = false }
-                        ) {
-                            Text("Nanti Saja", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!isDownloading) {
+                            TextButton(
+                                onClick = { showUpdateDialog = false }
+                            ) {
+                                Text("Nanti Saja", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     },
                     shape = RoundedCornerShape(24.dp),
