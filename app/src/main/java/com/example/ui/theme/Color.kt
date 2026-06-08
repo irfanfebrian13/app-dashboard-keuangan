@@ -2,30 +2,71 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// High Density Design Theme Palette
-val HighDensityPrimary = Color(0xFF2563EB) // Blue-600
-val HighDensitySecondary = Color(0xFF3B82F6) // Blue-500
+val PinkPrimary = Color(0xFFC7507A)
+val PinkOnPrimary = Color.White
+val PinkPrimaryContainer = Color(0xFFFFD9E4)
+val PinkOnPrimaryContainer = Color(0xFF3E0022)
 
-val IncomeGreen = Color(0xFF059669) // Emerald-600
-val ExpenseRed = Color(0xFFEF4444) // Coral-red-500
+val PinkSecondary = Color(0xFF745566)
+val PinkOnSecondary = Color.White
+val PinkSecondaryContainer = Color(0xFFFFD9E4)
+val PinkOnSecondaryContainer = Color(0xFF2B1523)
 
-val LightBackground = Color(0xFFF3F4F9) // Slate-soft light bg
-val LightSurface = Color(0xFFFFFFFF)
+val PinkTertiary = Color(0xFF7E5674)
+val PinkOnTertiary = Color.White
+val PinkTertiaryContainer = Color(0xFFFFD8F0)
+val PinkOnTertiaryContainer = Color(0xFF32142E)
 
-val DarkGreyBackground = Color(0xFF0F172A) // Slate-900 for modern dark mode
-val DarkGreySurface = Color(0xFF1E293B) // Slate-800
+val PinkError = Color(0xFFBA1A1A)
+val PinkOnError = Color.White
+val PinkErrorContainer = Color(0xFFFFDAD6)
+val PinkOnErrorContainer = Color(0xFF410002)
 
-// Fallbacks & helper styling
-val MintGreenPrimary = Color(0xFF2563EB)
-val LightMintGreen = Color(0xFFDBEAFE)
-val DarkMintGreen = Color(0xFF1E40AF)
-val CyanSecondary = Color(0xFF3B82F6)
+val PinkBackground = Color(0xFFFFFBFF)
+val PinkOnBackground = Color(0xFF201A1B)
+val PinkSurface = Color(0xFFFFFBFF)
+val PinkOnSurface = Color(0xFF201A1B)
+val PinkSurfaceVariant = Color(0xFFF2DEE1)
+val PinkOnSurfaceVariant = Color(0xFF514347)
+val PinkOutline = Color(0xFF837377)
+val PinkOutlineVariant = Color(0xFFD5C2C6)
+val PinkInverseSurface = Color(0xFF352F30)
+val PinkInverseOnSurface = Color(0xFFFAEEEF)
+val PinkInversePrimary = Color(0xFFFFB1C8)
+val PinkScrim = Color(0xFF000000)
 
-// Standard M3 defaults fallback
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val DarkPinkPrimary = Color(0xFFFFB1C8)
+val DarkPinkOnPrimary = Color(0xFF5E1138)
+val DarkPinkPrimaryContainer = Color(0xFF8F2D55)
+val DarkPinkOnPrimaryContainer = Color(0xFFFFD9E4)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val DarkPinkSecondary = Color(0xFFE2BDC6)
+val DarkPinkOnSecondary = Color(0xFF422936)
+val DarkPinkSecondaryContainer = Color(0xFF5B3F4C)
+val DarkPinkOnSecondaryContainer = Color(0xFFFFD9E4)
+
+val DarkPinkTertiary = Color(0xFFEAB9DE)
+val DarkPinkOnTertiary = Color(0xFF492944)
+val DarkPinkTertiaryContainer = Color(0xFF633F5B)
+val DarkPinkOnTertiaryContainer = Color(0xFFFFD8F0)
+
+val DarkPinkError = Color(0xFFFFB4AB)
+val DarkPinkOnError = Color(0xFF690005)
+val DarkPinkErrorContainer = Color(0xFF93000A)
+val DarkPinkOnErrorContainer = Color(0xFFFFDAD6)
+
+val DarkPinkBackground = Color(0xFF201A1B)
+val DarkPinkOnBackground = Color(0xFFEBE0E1)
+val DarkPinkSurface = Color(0xFF201A1B)
+val DarkPinkOnSurface = Color(0xFFEBE0E1)
+val DarkPinkSurfaceVariant = Color(0xFF514347)
+val DarkPinkOnSurfaceVariant = Color(0xFFD5C2C6)
+val DarkPinkOutline = Color(0xFF9E8C90)
+val DarkPinkOutlineVariant = Color(0xFF514347)
+val DarkPinkInverseSurface = Color(0xFFEBE0E1)
+val DarkPinkInverseOnSurface = Color(0xFF352F30)
+val DarkPinkInversePrimary = Color(0xFFC7507A)
+val DarkPinkScrim = Color(0xFF000000)
+
+val IncomeGreen = Color(0xFF4CAF93)
+val ExpenseRed = Color(0xFFE57373)

@@ -2,9 +2,12 @@ package com.example.ui.screens
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +35,7 @@ import com.example.data.model.Saving
 import com.example.ui.icons.CatIcon
 import com.example.ui.viewmodel.FinanceViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavingsTab(
     viewModel: FinanceViewModel,
@@ -39,7 +44,10 @@ fun SavingsTab(
     val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedSavingForTx by remember { mutableStateOf<Saving?>(null) }
-    var txType by remember { mutableStateOf("TOPUP") } // "TOPUP" or "WITHDRAW"
+    var txType by remember { mutableStateOf("TOPUP") }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    val pullToRefreshState = rememberPullToRefreshState()
 
     Column(
         modifier = Modifier
@@ -47,7 +55,6 @@ fun SavingsTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Savings Header Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -69,7 +76,7 @@ fun SavingsTab(
 
             Button(
                 onClick = { showAddDialog = true },
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
@@ -83,7 +90,6 @@ fun SavingsTab(
             }
         }
 
-        // Empty state check
         if (savings.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -94,7 +100,7 @@ fun SavingsTab(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Column(
                         modifier = Modifier
@@ -111,7 +117,7 @@ fun SavingsTab(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = CatIcon.Filled,
-                                    contentDescription = "No Savings Logo",
+                                    contentDescription = "Tidak ada tabungan",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -134,33 +140,41 @@ fun SavingsTab(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
+            PullToRefreshBox(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    isRefreshing = false
+                },
+                modifier = Modifier.weight(1f)
             ) {
-                items(savings, key = { it.id }) { saving ->
-                    SavingItem(
-                        saving = saving,
-                        onAddMoney = {
-                            selectedSavingForTx = saving
-                            txType = "TOPUP"
-                        },
-                        onWithdrawMoney = {
-                            selectedSavingForTx = saving
-                            txType = "WITHDRAW"
-                        },
-                        onDeleteGoal = {
-                            viewModel.deleteSaving(saving)
-                            Toast.makeText(context, "Goal '${saving.title}' berhasil dihapus", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(savings, key = { it.id }) { saving ->
+                        SavingItem(
+                            saving = saving,
+                            onAddMoney = {
+                                selectedSavingForTx = saving
+                                txType = "TOPUP"
+                            },
+                            onWithdrawMoney = {
+                                selectedSavingForTx = saving
+                                txType = "WITHDRAW"
+                            },
+                            onDeleteGoal = {
+                                viewModel.deleteSaving(saving)
+                                Toast.makeText(context, "Goal '${saving.title}' berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 
-    // Modal dialog to Add a New Savings Target
     if (showAddDialog) {
         var goalTitle by remember { mutableStateOf("") }
         var targetAmtStr by remember { mutableStateOf("") }
@@ -169,7 +183,7 @@ fun SavingsTab(
 
         Dialog(onDismissRequest = { showAddDialog = false }) {
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
@@ -192,12 +206,13 @@ fun SavingsTab(
                         label = { Text("Nama Target Tabungan") },
                         placeholder = { Text("Misal: Liburan ke Bali") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.small,
+                        singleLine = true
                     )
 
                     OutlinedTextField(
                         value = targetAmtStr,
-                        onValueChange = { input -> 
+                        onValueChange = { input ->
                             val clean = input.replace(".", "").filter { it.isDigit() }
                             targetAmtStr = if (clean.isEmpty()) "" else {
                                 val parsed = clean.toLongOrNull() ?: 0L
@@ -208,7 +223,8 @@ fun SavingsTab(
                         placeholder = { Text("Masukan jumlah target") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.small,
+                        singleLine = true
                     )
 
                     OutlinedTextField(
@@ -223,7 +239,8 @@ fun SavingsTab(
                         label = { Text("Tabungan Awal (Rp)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.small,
+                        singleLine = true
                     )
 
                     OutlinedTextField(
@@ -231,7 +248,8 @@ fun SavingsTab(
                         onValueChange = { goalNotes = it },
                         label = { Text("Catatan / Keterangan") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.small,
+                        maxLines = 3
                     )
 
                     Row(
@@ -259,7 +277,7 @@ fun SavingsTab(
                                 }
                             },
                             modifier = Modifier.weight(1.5f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.small
                         ) {
                             Text("Simpan Goal")
                         }
@@ -269,14 +287,13 @@ fun SavingsTab(
         }
     }
 
-    // Modal dialogue handles Add/Withdraw Money Action
     selectedSavingForTx?.let { saving ->
         var amountString by remember { mutableStateOf("") }
         var depositorName by remember { mutableStateOf(saving.holderName) }
- 
+
         Dialog(onDismissRequest = { selectedSavingForTx = null }) {
             Card(
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
@@ -297,8 +314,8 @@ fun SavingsTab(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
- 
-                     OutlinedTextField(
+
+                    OutlinedTextField(
                         value = amountString,
                         onValueChange = { input ->
                             val clean = input.replace(".", "").filter { it.isDigit() }
@@ -310,7 +327,8 @@ fun SavingsTab(
                         label = { Text("Jumlah Uang (Rp)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = MaterialTheme.shapes.small,
+                        singleLine = true
                     )
 
                     if (txType == "TOPUP") {
@@ -321,10 +339,11 @@ fun SavingsTab(
                             placeholder = { Text("Misal: Kak Irfani") },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Nama Penabung", modifier = Modifier.size(20.dp)) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = MaterialTheme.shapes.small,
+                            singleLine = true
                         )
                     }
- 
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -346,7 +365,6 @@ fun SavingsTab(
                                             Toast.makeText(context, "Mohon isi nama penabung!", Toast.LENGTH_SHORT).show()
                                         } else {
                                             viewModel.topUpSaving(saving, amount)
-                                            // Auto log saving as expense for balance adjustment!
                                             viewModel.addTransaction(
                                                 title = "Setoran Tabungan: ${saving.title}",
                                                 amount = amount,
@@ -364,7 +382,6 @@ fun SavingsTab(
                                             Toast.makeText(context, "Error: Saldo tabungan untuk target ini tidak mencukupi!", Toast.LENGTH_SHORT).show()
                                         } else {
                                             viewModel.withdrawSaving(saving, amount)
-                                            // Auto log withdrawal as income for balance adjustment!
                                             viewModel.addTransaction(
                                                 title = "Penarikan Tabungan: ${saving.title}",
                                                 amount = amount,
@@ -380,7 +397,7 @@ fun SavingsTab(
                                 }
                             },
                             modifier = Modifier.weight(1.5f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.small
                         ) {
                             Text("Konfirmasi")
                         }
@@ -391,6 +408,7 @@ fun SavingsTab(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavingItem(
     saving: Saving,
@@ -400,190 +418,237 @@ fun SavingItem(
 ) {
     val progressRatio = if (saving.targetAmount > 0) (saving.currentAmount / saving.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
     val percentStr = String.format("%.0f%%", progressRatio * 100)
+    var showNotes by remember { mutableStateOf(false) }
 
     val progressColor = when {
-        progressRatio >= 1.0f -> Color(0xFF10B981) // Complete emerald
-        progressRatio >= 0.5f -> MaterialTheme.colorScheme.primary // Blue-600
-        else -> Color(0xFFF59E0B) // Amber warning
+        progressRatio >= 1.0f -> Color(0xFF10B981)
+        progressRatio >= 0.5f -> MaterialTheme.colorScheme.primary
+        else -> Color(0xFFF59E0B)
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
-                RoundedCornerShape(20.dp)
-            ),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDeleteGoal()
+                true
+            } else false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 4.dp)
+                    .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = saving.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    if (saving.holderName.isNotEmpty()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Hapus",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        enableDismissFromStartToEnd = false,
+        content = {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
+                        RoundedCornerShape(20.dp)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = saving.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            if (saving.holderName.isNotEmpty()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Atas Nama",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                        Text(
+                                            text = "Atas Nama: ${saving.holderName}",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                            if (saving.notes.isNotEmpty()) {
+                                TextButton(
+                                    onClick = { showNotes = !showNotes },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.height(24.dp)
+                                ) {
+                                    Text(
+                                        text = if (showNotes) "Sembunyikan Catatan" else "Lihat Catatan",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                AnimatedVisibility(
+                                    visible = showNotes,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Text(
+                                        text = saving.notes,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onDeleteGoal,
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Atas Nama",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(11.dp)
-                                )
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "Hapus Goal",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column {
+                            Text(
+                                text = "Terkumpul",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatCurrency(saving.currentAmount),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = progressColor
+                            )
+                        }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "Target Goal",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatCurrency(saving.targetAmount),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = percentStr,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = progressColor
+                            )
+                            if (saving.targetAmount > saving.currentAmount) {
                                 Text(
-                                    text = "Atas Nama: ${saving.holderName}",
+                                    text = "Kekurangan: ${formatCurrency(saving.targetAmount - saving.currentAmount)}",
                                     fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    text = "Target Tercapai!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF10B981)
                                 )
                             }
                         }
-                    }
-                    if (saving.notes.isNotEmpty()) {
-                        Text(
-                            text = saving.notes,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        LinearProgressIndicator(
+                            progress = { progressRatio },
+                            color = progressColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape)
                         )
                     }
-                }
 
-                IconButton(
-                    onClick = onDeleteGoal,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Hapus Goal",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onWithdrawMoney,
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.small,
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Tarik Uang", modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tarik", fontSize = 12.sp)
+                        }
 
-            // Target Info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Column {
-                    Text(
-                        text = "Terkumpul",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = formatCurrency(saving.currentAmount),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = progressColor
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Target Goal",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = formatCurrency(saving.targetAmount),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-            }
-
-            // Visual Progress bar
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = percentStr,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = progressColor
-                    )
-                    if (saving.targetAmount > saving.currentAmount) {
-                        Text(
-                            text = "Kekurangan: ${formatCurrency(saving.targetAmount - saving.currentAmount)}",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text(
-                            text = "Target Tercapai! 🎉",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF10B981)
-                        )
+                        Button(
+                            onClick = onAddMoney,
+                            modifier = Modifier.weight(1.2f),
+                            shape = MaterialTheme.shapes.small,
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = progressColor)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Simpan Uang", modifier = Modifier.size(16.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tambah", fontSize = 12.sp, color = Color.White)
+                        }
                     }
-                }
-                LinearProgressIndicator(
-                    progress = { progressRatio },
-                    color = progressColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                )
-            }
-
-            // Control deposit/withdrawal buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onWithdrawMoney,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Tarik Uang", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tarik", fontSize = 12.sp)
-                }
-
-                Button(
-                    onClick = onAddMoney,
-                    modifier = Modifier.weight(1.2f),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = progressColor)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Simpan Uang", modifier = Modifier.size(16.dp), tint = Color.White)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tambah", fontSize = 12.sp, color = Color.White)
                 }
             }
         }
-    }
+    )
 }

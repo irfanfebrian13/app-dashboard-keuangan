@@ -5,32 +5,67 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-
-private val DarkColorScheme = darkColorScheme(
-    primary = HighDensityPrimary,
-    onPrimary = Color.White,
-    secondary = HighDensitySecondary,
-    onSecondary = Color.White,
-    background = DarkGreyBackground,
-    onBackground = Color(0xFFF1F5F9),
-    surface = DarkGreySurface,
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = Color(0xFFCBD5E1)
-)
 
 private val LightColorScheme = lightColorScheme(
-    primary = HighDensityPrimary,
-    onPrimary = Color.White,
-    secondary = HighDensitySecondary,
-    onSecondary = Color.White,
-    background = LightBackground,
-    onBackground = Color(0xFF0F172A),
-    surface = LightSurface,
-    onSurface = Color(0xFF0F172A),
-    surfaceVariant = Color(0xFFE2E8F0),
-    onSurfaceVariant = Color(0xFF64748B)
+    primary = PinkPrimary,
+    onPrimary = PinkOnPrimary,
+    primaryContainer = PinkPrimaryContainer,
+    onPrimaryContainer = PinkOnPrimaryContainer,
+    secondary = PinkSecondary,
+    onSecondary = PinkOnSecondary,
+    secondaryContainer = PinkSecondaryContainer,
+    onSecondaryContainer = PinkOnSecondaryContainer,
+    tertiary = PinkTertiary,
+    onTertiary = PinkOnTertiary,
+    tertiaryContainer = PinkTertiaryContainer,
+    onTertiaryContainer = PinkOnTertiaryContainer,
+    error = PinkError,
+    onError = PinkOnError,
+    errorContainer = PinkErrorContainer,
+    onErrorContainer = PinkOnErrorContainer,
+    background = PinkBackground,
+    onBackground = PinkOnBackground,
+    surface = PinkSurface,
+    onSurface = PinkOnSurface,
+    surfaceVariant = PinkSurfaceVariant,
+    onSurfaceVariant = PinkOnSurfaceVariant,
+    outline = PinkOutline,
+    outlineVariant = PinkOutlineVariant,
+    inverseSurface = PinkInverseSurface,
+    inverseOnSurface = PinkInverseOnSurface,
+    inversePrimary = PinkInversePrimary,
+    scrim = PinkScrim
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = DarkPinkPrimary,
+    onPrimary = DarkPinkOnPrimary,
+    primaryContainer = DarkPinkPrimaryContainer,
+    onPrimaryContainer = DarkPinkOnPrimaryContainer,
+    secondary = DarkPinkSecondary,
+    onSecondary = DarkPinkOnSecondary,
+    secondaryContainer = DarkPinkSecondaryContainer,
+    onSecondaryContainer = DarkPinkOnSecondaryContainer,
+    tertiary = DarkPinkTertiary,
+    onTertiary = DarkPinkOnTertiary,
+    tertiaryContainer = DarkPinkTertiaryContainer,
+    onTertiaryContainer = DarkPinkOnTertiaryContainer,
+    error = DarkPinkError,
+    onError = DarkPinkOnError,
+    errorContainer = DarkPinkErrorContainer,
+    onErrorContainer = DarkPinkOnErrorContainer,
+    background = DarkPinkBackground,
+    onBackground = DarkPinkOnBackground,
+    surface = DarkPinkSurface,
+    onSurface = DarkPinkOnSurface,
+    surfaceVariant = DarkPinkSurfaceVariant,
+    onSurfaceVariant = DarkPinkOnSurfaceVariant,
+    outline = DarkPinkOutline,
+    outlineVariant = DarkPinkOutlineVariant,
+    inverseSurface = DarkPinkInverseSurface,
+    inverseOnSurface = DarkPinkInverseOnSurface,
+    inversePrimary = DarkPinkInversePrimary,
+    scrim = DarkPinkScrim
 )
 
 @Composable
@@ -43,6 +78,7 @@ fun MyApplicationTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,7 +48,6 @@ import com.example.data.model.Saving
 import com.example.ui.icons.CatIcon
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.MintGreenPrimary
 import com.example.ui.viewmodel.FinanceStats
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.MonthlyTrend
@@ -92,6 +92,11 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
     var downloadProgress by remember { mutableStateOf(-1) }
     var isDownloading by remember { mutableStateOf(false) }
 
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
+    val isExpandedScreen = screenWidthDp >= 840
+    val isMediumScreen = screenWidthDp in 600..<840
+
     LaunchedEffect(Unit) {
         viewModel.checkAppUpdate(context) { info ->
             if (info.hasUpdate) {
@@ -114,282 +119,354 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountBalanceWallet,
-                                    contentDescription = "Wallet Icon",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-                        Column {
-                            Text(
-                                text = "HematKu",
-                                fontWeight = FontWeight.ExtraBold,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "LINDUNGI KEUANGAN ANDA",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    Box(modifier = Modifier.padding(end = 12.dp)) {
-                        IconButton(
-                            onClick = { openUpdateDialog() },
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notifikasi",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        if (hasPendingUpdate) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Red)
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+    val tabLabels = listOf("Beranda", "Catat", "Tabungan", "Tren", "Setelan")
+    val tabIconsFilled = listOf(Icons.Default.Home, Icons.Default.AddCircle, CatIcon.Filled, Icons.Default.BarChart, Icons.Default.CloudSync)
+    val tabIconsOutlined = listOf(Icons.Outlined.Home, Icons.Outlined.AddCircle, CatIcon.Outlined, Icons.Outlined.BarChart, Icons.Outlined.CloudSync)
+
+    @Composable fun TabContent() {
+        when (activeTab) {
+            0 -> BerandaTab(
+                stats = stats,
+                transactions = transactions,
+                categories = categories,
+                onTransactionClick = { selectedTransactionByEdit = it },
+                onExportCsvClick = { viewModel.shareTransactionsAsCSV(context) }
             )
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 4.dp
-            ) {
-                NavigationBarItem(
-                    selected = activeTab == 0,
-                    onClick = { activeTab = 0 },
-                    icon = { Icon(if (activeTab == 0) Icons.Default.Home else Icons.Outlined.Home, contentDescription = "Beranda") },
-                    label = { Text("Beranda", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 1,
-                    onClick = { activeTab = 1 },
-                    icon = { Icon(if (activeTab == 1) Icons.Default.AddCircle else Icons.Outlined.AddCircle, contentDescription = "Catat") },
-                    label = { Text("Catat", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 2,
-                    onClick = { activeTab = 2 },
-                    icon = { Icon(if (activeTab == 2) CatIcon.Filled else CatIcon.Outlined, contentDescription = "Tabungan") },
-                    label = { Text("Tabungan", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 3,
-                    onClick = { activeTab = 3 },
-                    icon = { Icon(if (activeTab == 3) Icons.Default.BarChart else Icons.Outlined.BarChart, contentDescription = "Tren") },
-                    label = { Text("Tren", fontSize = 11.sp) }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 4,
-                    onClick = { activeTab = 4 },
-                    icon = { Icon(if (activeTab == 4) Icons.Default.CloudSync else Icons.Outlined.CloudSync, contentDescription = "Setelan") },
-                    label = { Text("Setelan", fontSize = 11.sp) }
-                )
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (activeTab) {
-                0 -> BerandaTab(
-                    stats = stats,
-                    transactions = transactions,
-                    categories = categories,
-                    onTransactionClick = { selectedTransactionByEdit = it },
-                    onExportCsvClick = { viewModel.shareTransactionsAsCSV(context) }
-                )
-                1 -> CatatTab(
-                    categories = categories,
-                    onSave = { title, amount, type, category, date, notes ->
-                        viewModel.addTransaction(title, amount, type, category, date, notes)
-                        Toast.makeText(context, "Transaksi berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                        activeTab = 0 // back to main dashboard
-                    }
-                )
-                2 -> SavingsTab(
-                    viewModel = viewModel,
-                    savings = savings
-                )
-                3 -> TrenTab(trends = trends, stats = stats)
-                4 -> SyncAndCategoryTab(
-                    viewModel = viewModel,
-                    categories = categories
-                )
-            }
+            1 -> CatatTab(
+                categories = categories,
+                onSave = { title, amount, type, category, date, notes ->
+                    viewModel.addTransaction(title, amount, type, category, date, notes)
+                    Toast.makeText(context, "Transaksi berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    activeTab = 0
+                }
+            )
+            2 -> SavingsTab(viewModel = viewModel, savings = savings)
+            3 -> TrenTab(trends = trends, stats = stats)
+            4 -> SyncAndCategoryTab(viewModel = viewModel, categories = categories)
+        }
+    }
 
-            // Edit Transaction Dialog
-            selectedTransactionByEdit?.let { transaction ->
-                EditTransactionDialog(
-                    transaction = transaction,
-                    categories = categories,
-                    onDismiss = { selectedTransactionByEdit = null },
-                    onConfirmEdit = { updatedTransaction ->
-                        viewModel.updateTransaction(updatedTransaction)
-                        selectedTransactionByEdit = null
-                        Toast.makeText(context, "Transaksi berhasil diperbarui!", Toast.LENGTH_SHORT).show()
-                    },
-                    onDelete = {
-                        viewModel.deleteTransaction(transaction)
-                        selectedTransactionByEdit = null
-                        Toast.makeText(context, "Transaksi berhasil dihapus!", Toast.LENGTH_SHORT).show()
+    @Composable fun TopBarContent() {
+        TopAppBar(
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.AccountBalanceWallet,
+                                contentDescription = "Wallet Icon",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
-                )
-            }
-
-            // In-App Update Dialog (M3 styled)
-            if (showUpdateDialog && updateInfo != null) {
-                AlertDialog(
-                    onDismissRequest = {
-                        if (!isDownloading) showUpdateDialog = false
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.SystemUpdate,
-                            contentDescription = "Pembaruan",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
-                        )
-                    },
-                    title = {
+                    Column {
                         Text(
-                            text = if (isDownloading) "Mengunduh..." else "Pembaruan Tersedia! 🎉",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            text = "HematKu",
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
-                    },
-                    text = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Text(
+                            text = "LINDUNGI KEUANGAN ANDA",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            },
+            actions = {
+                Box(modifier = Modifier.padding(end = 12.dp)) {
+                    IconButton(
+                        onClick = { openUpdateDialog() },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifikasi",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    if (hasPendingUpdate) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color.Red)
+                        )
+                    }
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background
+            )
+        )
+    }
+
+    @Composable fun Dialogs() {
+        selectedTransactionByEdit?.let { transaction ->
+            EditTransactionDialog(
+                transaction = transaction,
+                categories = categories,
+                onDismiss = { selectedTransactionByEdit = null },
+                onConfirmEdit = { updatedTransaction ->
+                    viewModel.updateTransaction(updatedTransaction)
+                    selectedTransactionByEdit = null
+                    Toast.makeText(context, "Transaksi berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                },
+                onDelete = {
+                    viewModel.deleteTransaction(transaction)
+                    selectedTransactionByEdit = null
+                    Toast.makeText(context, "Transaksi berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        if (showUpdateDialog && updateInfo != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isDownloading) showUpdateDialog = false
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = "Pembaruan",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = if (isDownloading) "Mengunduh..." else "Pembaruan Tersedia! 🎉",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (isDownloading) {
+                            LinearProgressIndicator(
+                                progress = { if (downloadProgress > 0) downloadProgress / 100f else 0f },
+                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                            )
+                            Text(
+                                text = if (downloadProgress > 0) "$downloadProgress%" else "Memulai unduhan...",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Versi Sekarang:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(updateInfo.currentVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Versi Terbaru:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(updateInfo.latestVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
+
+                            Text("Catatan Rilis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp, min = 40.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                MarkdownText(
+                                    text = updateInfo.releaseNotes,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    if (!isDownloading) {
+                        Button(
+                            onClick = {
+                                isDownloading = true
+                                com.example.data.UpdateManager.downloadAndInstallApk(
+                                    context = context,
+                                    downloadUrl = updateInfo.downloadUrl,
+                                    onProgress = { progress -> downloadProgress = progress },
+                                    onError = { err ->
+                                        isDownloading = false
+                                        downloadProgress = -1
+                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                    },
+                                    onSuccess = {
+                                        isDownloading = false
+                                        showUpdateDialog = false
+                                    }
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (isDownloading) {
-                                LinearProgressIndicator(
-                                    progress = { if (downloadProgress > 0) downloadProgress / 100f else 0f },
-                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                                )
-                                Text(
-                                    text = if (downloadProgress > 0) "$downloadProgress%" else "Memulai unduhan...",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center
-                                )
-                            } else {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Versi Sekarang:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(updateInfo.currentVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Versi Terbaru:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(updateInfo.latestVersion, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                }
+                            Text("Unduh & Instal Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    if (!isDownloading) {
+                        TextButton(
+                            onClick = { showUpdateDialog = false }
+                        ) {
+                            Text("Nanti Saja", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            )
+        }
+    }
 
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
-
-                                Text("Catatan Rilis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 200.dp, min = 40.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    MarkdownText(
-                                        text = updateInfo.releaseNotes,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
-                                }
-                            }
+    if (isExpandedScreen) {
+        PermanentNavigationDrawer(
+            drawerContent = {
+                PermanentDrawerSheet(modifier = Modifier.width(260.dp)) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "HematKu",
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    tabLabels.forEachIndexed { index, label ->
+                        NavigationDrawerItem(
+                            icon = {
+                                Icon(
+                                    if (activeTab == index) tabIconsFilled[index] else tabIconsOutlined[index],
+                                    contentDescription = label
+                                )
+                            },
+                            label = { Text(label) },
+                            selected = activeTab == index,
+                            onClick = { activeTab = index },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+                }
+            }
+        ) {
+            Scaffold(
+                topBar = { TopBarContent() },
+                containerColor = MaterialTheme.colorScheme.background
+            ) { innerPadding ->
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    TabContent()
+                    Dialogs()
+                }
+            }
+        }
+    } else if (isMediumScreen) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            NavigationRail(
+                header = {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.size(36.dp).padding(bottom = 8.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = "HematKu",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
-                    },
-                    confirmButton = {
-                        if (!isDownloading) {
-                            Button(
-                                onClick = {
-                                    isDownloading = true
-                                    com.example.data.UpdateManager.downloadAndInstallApk(
-                                        context = context,
-                                        downloadUrl = updateInfo.downloadUrl,
-                                        onProgress = { progress -> downloadProgress = progress },
-                                        onError = { err ->
-                                            isDownloading = false
-                                            downloadProgress = -1
-                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                                        },
-                                        onSuccess = {
-                                            isDownloading = false
-                                            showUpdateDialog = false
-                                        }
-                                    )
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Unduh & Instal Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    },
-                    dismissButton = {
-                        if (!isDownloading) {
-                            TextButton(
-                                onClick = { showUpdateDialog = false }
-                            ) {
-                                Text("Nanti Saja", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    },
-                    shape = RoundedCornerShape(24.dp),
+                    }
+                }
+            ) {
+                Spacer(Modifier.weight(1f))
+                tabLabels.forEachIndexed { index, label ->
+                    NavigationRailItem(
+                        icon = {
+                            Icon(
+                                if (activeTab == index) tabIconsFilled[index] else tabIconsOutlined[index],
+                                contentDescription = label
+                            )
+                        },
+                        label = { Text(label, fontSize = 11.sp) },
+                        selected = activeTab == index,
+                        onClick = { activeTab = index }
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+            }
+            Scaffold(
+                topBar = { TopBarContent() },
+                containerColor = MaterialTheme.colorScheme.background
+            ) { innerPadding ->
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                    TabContent()
+                    Dialogs()
+                }
+            }
+        }
+    } else {
+        Scaffold(
+            topBar = { TopBarContent() },
+            bottomBar = {
+                NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp
-                )
+                    tonalElevation = 4.dp
+                ) {
+                    tabLabels.forEachIndexed { index, label ->
+                        NavigationBarItem(
+                            selected = activeTab == index,
+                            onClick = { activeTab = index },
+                            icon = {
+                                Icon(
+                                    if (activeTab == index) tabIconsFilled[index] else tabIconsOutlined[index],
+                                    contentDescription = label
+                                )
+                            },
+                            label = { Text(label, fontSize = 11.sp) }
+                        )
+                    }
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                TabContent()
+                Dialogs()
             }
         }
     }
@@ -985,7 +1062,7 @@ fun CatatTab(
                     .height(54.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MintGreenPrimary
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Icon(Icons.Default.Save, contentDescription = "Simpan")
@@ -1096,7 +1173,7 @@ fun TrenTab(trends: List<MonthlyTrend>, stats: FinanceStats) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(imageVector = Icons.Default.Lightbulb, contentDescription = "Insight", tint = MintGreenPrimary)
+                        Icon(imageVector = Icons.Default.Lightbulb, contentDescription = "Insight", tint = MaterialTheme.colorScheme.primary)
                         Text(text = "Analisis Pengeluaran", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
 
@@ -1462,7 +1539,7 @@ fun EditTransactionDialog(
                         enabled = title.isNotBlank() && amountStr.toDoubleOrNull() != null,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MintGreenPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("Simpan")
                     }
