@@ -47,6 +47,16 @@ object UpdateManager {
             .apply()
     }
 
+    fun getSavedToken(context: Context): String {
+        val prefs = context.getSharedPreferences("HEMATKU_UPDATE_SETTINGS", Context.MODE_PRIVATE)
+        return prefs.getString("github_token", "") ?: ""
+    }
+
+    fun saveToken(context: Context, token: String) {
+        val prefs = context.getSharedPreferences("HEMATKU_UPDATE_SETTINGS", Context.MODE_PRIVATE)
+        prefs.edit().putString("github_token", token.trim()).apply()
+    }
+
     fun getCurrentVersionName(context: Context): String {
         return try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -61,22 +71,32 @@ object UpdateManager {
         val currentVersion = getCurrentVersionName(context)
         val owner = getSavedRepoOwner(context)
         val repo = getSavedRepoName(context)
+        val token = getSavedToken(context)
 
         val url = "https://api.github.com/repos/$owner/$repo/releases/latest"
         
         try {
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(url)
                 .header("User-Agent", "HematKu-Update-Checker")
-                .build()
+            if (token.isNotEmpty()) {
+                requestBuilder.header("Authorization", "Bearer $token")
+            }
+            val request = requestBuilder.build()
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
+                    val errorMsg = when (response.code) {
+                        403 -> "Batas permintaan API GitHub terlampaui. Tambahkan token GitHub di Pengaturan > Pembaruan."
+                        404 -> "Rilis belum tersedia. Buat rilis dengan tag v1.x.x di GitHub."
+                        401 -> "Token GitHub tidak valid. Periksa token di Pengaturan > Pembaruan."
+                        else -> "Gagal memindai (HTTP ${response.code})"
+                    }
                     return@withContext UpdateInfo(
                         hasUpdate = false,
                         currentVersion = currentVersion,
                         latestVersion = currentVersion,
-                        releaseNotes = "Gagal memindai (HTTP rilis belum tersedia atau repo privat / salah)",
+                        releaseNotes = errorMsg,
                         downloadUrl = ""
                     )
                 }
@@ -174,12 +194,20 @@ object UpdateManager {
         onError: (String) -> Unit = {},
         onSuccess: () -> Unit = {}
     ) {
+        if (!downloadUrl.endsWith(".apk", ignoreCase = true)) {
+            openDownloadLink(context, downloadUrl)
+            return
+        }
         Thread {
             try {
-                val request = Request.Builder()
+                val token = getSavedToken(context)
+                val requestBuilder = Request.Builder()
                     .url(downloadUrl)
                     .header("User-Agent", "HematKu-Updater")
-                    .build()
+                if (token.isNotEmpty()) {
+                    requestBuilder.header("Authorization", "Bearer $token")
+                }
+                val request = requestBuilder.build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {

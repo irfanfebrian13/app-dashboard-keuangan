@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -935,10 +936,16 @@ fun AppUpdateSettingsView(viewModel: FinanceViewModel) {
     val context = LocalContext.current
     var ownerInput by remember { mutableStateOf(com.example.data.UpdateManager.getSavedRepoOwner(context)) }
     var repoInput by remember { mutableStateOf(com.example.data.UpdateManager.getSavedRepoName(context)) }
-    var showResults by remember { mutableStateOf(false) }
-
+    var tokenInput by remember { mutableStateOf(com.example.data.UpdateManager.getSavedToken(context)) }
+    var showToken by remember { mutableStateOf(false) }
     val updateInfo = viewModel.latestUpdateInfo.value
     val isChecking = viewModel.isCheckingUpdate.value
+
+    LaunchedEffect(Unit) {
+        if (updateInfo == null) {
+            viewModel.checkAppUpdate(context)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -992,18 +999,39 @@ fun AppUpdateSettingsView(viewModel: FinanceViewModel) {
                         singleLine = true
                     )
 
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = { tokenInput = it },
+                        label = { Text("GitHub Token (Opsional)") },
+                        placeholder = { Text("ghp_... atau github_pat_...") },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = "Token") },
+                        trailingIcon = {
+                            IconButton(onClick = { showToken = !showToken }) {
+                                Icon(
+                                    imageVector = if (showToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (showToken) "Sembunyikan token" else "Tampilkan token"
+                                )
+                            }
+                        },
+                        visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        supportingText = { Text("Untuk hindari batas API (60/jam). Token perlu repo:public_repo scope.", fontSize = 10.sp) }
+                    )
+
                     Button(
                         onClick = {
                             if (ownerInput.trim().isEmpty() || repoInput.trim().isEmpty()) {
                                 Toast.makeText(context, "Username dan nama repositori wajib diisi!", Toast.LENGTH_SHORT).show()
                             } else {
                                 com.example.data.UpdateManager.saveRepoDetails(context, ownerInput, repoInput)
-                                showResults = true
+                                com.example.data.UpdateManager.saveToken(context, tokenInput)
                                 viewModel.checkAppUpdate(context) { info ->
                                     if (info.hasUpdate) {
                                         Toast.makeText(context, "Pembaruan rilis ditemukan!", Toast.LENGTH_SHORT).show()
                                     } else if (!info.downloadUrl.contains("http")) {
-                                        Toast.makeText(context, "Tidak dapat terhubung atau rilis belum ada", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, info.releaseNotes, Toast.LENGTH_LONG).show()
                                     } else {
                                         Toast.makeText(context, "Aplikasi Anda sudah versi terbaru!", Toast.LENGTH_SHORT).show()
                                     }
@@ -1071,7 +1099,17 @@ fun AppUpdateSettingsView(viewModel: FinanceViewModel) {
                         )
                     }
 
-                    if (updateInfo != null && showResults) {
+                    if (isChecking) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Memeriksa pembaruan...", fontSize = 12.sp)
+                        }
+                    } else if (updateInfo != null) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1165,10 +1203,10 @@ fun AppUpdateSettingsView(viewModel: FinanceViewModel) {
                                 Text("Unduh Pembaruan APK", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                    } else if (showResults && !isChecking) {
+                    } else {
                         Text(
-                            text = "Gagal memuat rilis atau info kosong. Pastikan repository publik dan rilis tag aktif sudah diupload.",
-                            color = MaterialTheme.colorScheme.error,
+                            text = "Klik tombol \"Simpan & Cek Pembaruan\" di atas untuk memeriksa versi terbaru.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
