@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,7 +78,7 @@ fun formatDate(timestamp: Long): String {
 @Composable
 fun DashboardScreen(viewModel: FinanceViewModel) {
     val context = LocalContext.current
-    var activeTab by remember { mutableIntStateOf(0) }
+    var activeTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedTransactionByEdit by remember { mutableStateOf<Transaction?>(null) }
 
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
@@ -89,8 +90,8 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
     var showUpdateDialog by remember { mutableStateOf(false) }
     val updateInfo = viewModel.latestUpdateInfo.value
     val hasPendingUpdate = updateInfo?.hasUpdate == true
-    var downloadProgress by remember { mutableStateOf(-1) }
-    var isDownloading by remember { mutableStateOf(false) }
+    val downloadProgress = viewModel.downloadProgress.value
+    val isDownloading = viewModel.isDownloading.value
 
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
@@ -314,20 +315,9 @@ fun DashboardScreen(viewModel: FinanceViewModel) {
                     if (!isDownloading) {
                         Button(
                             onClick = {
-                                isDownloading = true
-                                com.example.data.UpdateManager.downloadAndInstallApk(
+                                viewModel.downloadAndInstall(
                                     context = context,
-                                    downloadUrl = updateInfo.downloadUrl,
-                                    onProgress = { progress -> downloadProgress = progress },
-                                    onError = { err ->
-                                        isDownloading = false
-                                        downloadProgress = -1
-                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                                    },
-                                    onSuccess = {
-                                        isDownloading = false
-                                        showUpdateDialog = false
-                                    }
+                                    downloadUrl = updateInfo.downloadUrl
                                 )
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),

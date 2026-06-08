@@ -1,5 +1,7 @@
 package com.example.ui.viewmodel
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -7,6 +9,9 @@ import com.example.data.model.Category
 import com.example.data.model.Saving
 import com.example.data.model.Transaction
 import com.example.data.repository.TransactionRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +27,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 
 data class FinanceStats(
     val totalIncome: Double,
@@ -45,6 +51,41 @@ class FinanceViewModel(private val repository: TransactionRepository) : ViewMode
     // Update Checker States
     val latestUpdateInfo = mutableStateOf<com.example.data.UpdateInfo?>(null)
     val isCheckingUpdate = mutableStateOf(false)
+
+    // APK Download States (ViewModel scope survives Activity recreation)
+    val isDownloading = mutableStateOf(false)
+    val downloadProgress = mutableIntStateOf(-1)
+    private var downloadJob: Job? = null
+
+    fun downloadAndInstall(context: Context, downloadUrl: String) {
+        // Prevent concurrent downloads
+        if (downloadJob?.isActive == true) return
+        isDownloading.value = true
+        downloadProgress.value = 0
+
+        downloadJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                com.example.data.UpdateManager.downloadApk(
+                    context = context,
+                    downloadUrl = downloadUrl,
+                    onProgress = { progress ->
+                        downloadProgress.value = progress
+                    }
+                )
+
+                withContext(Dispatchers.Main) {
+                    com.example.data.UpdateManager.installApk(context)
+                }
+            } catch (e: Exception) {
+                Log.e("FinanceViewModel", "Download failed", e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    isDownloading.value = false
+                    downloadProgress.value = -1
+                }
+            }
+        }
+    }
 
     fun checkAppUpdate(context: android.content.Context, onFinished: (com.example.data.UpdateInfo) -> Unit = {}) {
         isCheckingUpdate.value = true

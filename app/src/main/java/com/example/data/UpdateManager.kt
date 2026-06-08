@@ -3,6 +3,8 @@ package com.example.data
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -187,79 +189,89 @@ object UpdateManager {
         }
     }
 
-    fun downloadAndInstallApk(
+    suspend fun downloadApk(
         context: Context,
         downloadUrl: String,
-        onProgress: (Int) -> Unit = {},
-        onError: (String) -> Unit = {},
-        onSuccess: () -> Unit = {}
-    ) {
-        if (!downloadUrl.endsWith(".apk", ignoreCase = true)) {
-            openDownloadLink(context, downloadUrl)
-            return
+        onProgress: (Int) -> Unit = {}
+    ) = withContext(Dispatchers.IO) {
+        require(downloadUrl.endsWith(".apk", ignoreCase = true)) {
+            "URL must be an APK file: $downloadUrl"
         }
-        Thread {
-            try {
-                val token = getSavedToken(context)
-                val requestBuilder = Request.Builder()
-                    .url(downloadUrl)
-                    .header("User-Agent", "HematKu-Updater")
-                if (token.isNotEmpty()) {
-                    requestBuilder.header("Authorization", "Bearer $token")
-                }
-                val request = requestBuilder.build()
 
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        onError("Gagal mengunduh APK (HTTP ${response.code})")
-                        return@use
-                    }
+        val token = getSavedToken(context)
+        val requestBuilder = Request.Builder()
+            .url(downloadUrl)
+            .header("User-Agent", "HematKu-Updater")
+        if (token.isNotEmpty()) {
+            requestBuilder.header("Authorization", "Bearer $token")
+        }
+        val request = requestBuilder.build()
 
-                    val body = response.body ?: run {
-                        onError("Response body kosong")
-                        return@use
-                    }
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("Gagal mengunduh APK (HTTP ${response.code})")
+            }
 
-                    val apkDir = File(context.cacheDir, "apk_updates")
-                    apkDir.mkdirs()
-                    val apkFile = File(apkDir, "HematKu_update.apk")
+            val body = response.body ?: throw Exception("Response body kosong")
 
-                    val contentLength = body.contentLength()
-                    var bytesRead = 0L
+            val apkDir = File(context.cacheDir, "apk_updates")
+            apkDir.mkdirs()
+            val apkFile = File(apkDir, "HematKu_update.apk")
 
-                    body.byteStream().use { input ->
-                        FileOutputStream(apkFile).use { output ->
-                            val buffer = ByteArray(8192)
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                bytesRead += read
-                                if (contentLength > 0) {
-                                    val progress = ((bytesRead * 100) / contentLength).toInt()
-                                    onProgress(progress)
-                                }
-                            }
+            val contentLength = body.contentLength()
+            var bytesRead = 0L
+
+            body.byteStream().use { input ->
+                FileOutputStream(apkFile).use { output ->
+                    val buffer = ByteArray(8192)
+                    var read: Int
+                    while (input.read(buffer).also { read = it } != -1) {
+                        output.write(buffer, 0, read)
+                        bytesRead += read
+                        if (contentLength > 0) {
+                            val progress = ((bytesRead * 100) / contentLength).toInt()
+                            withContext(Dispatchers.Main) { onProgress(progress) }
                         }
                     }
-
-                    val apkUri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        apkFile
-                    )
-
-                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(apkUri, "application/vnd.android.package-archive")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(installIntent)
-                    onSuccess()
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error downloading APK", e)
-                onError("Gagal mengunduh: ${e.localizedMessage}")
             }
-        }.start()
+
+            // Optional: verify file has content
+            if (!apkFile.exists() || apkFile.length() == 0L) {
+                throw Exception("File APK kosong atau tidak ditemukan")
+            }
+
+            Log.i(TAG, "APK downloaded successfully: ${apkFile.length()} bytes")
+        }
+    }
+
+    fun installApk(context: Context): Boolean {
+        return try {
+            val apkFile = File(context.cacheDir, "apk_updates/HematKu_update.apk")
+            if (!apkFile.exists() || apkFile.length() == 0L) {
+                Log.e(TAG, "APK file not found or empty: ${apkFile.absolutePath}")
+                return false
+            }
+
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(installIntent)
+            Log.i(TAG, "Installer launched for ${apkFile.absolutePath}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching installer", e)
+            false
+        }
     }
 }
