@@ -42,10 +42,10 @@ jobs:
       - name: Build Debug APK
         run: |
           if [ -f ./gradlew ]; then
-            ./gradlew assembleDebug
+            ./gradlew assembleDebug -Pkotlin.compiler.execution.strategy=daemon -Djava.awt.headless=true
           else
             # Try installing gradle or using build-in gradle task
-            gradle assembleDebug
+            gradle assembleDebug -Pkotlin.compiler.execution.strategy=daemon -Djava.awt.headless=true
           fi
 
       - name: Upload Build Artifacts
